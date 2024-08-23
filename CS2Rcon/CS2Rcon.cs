@@ -1,4 +1,5 @@
-﻿using CounterStrikeSharp.API;
+﻿using System.Text.Json.Serialization;
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
@@ -9,13 +10,29 @@ using CounterStrikeSharp.API.Modules.Utils;
 
 namespace CS2Rcon
 {
+    public class CS2RconConfig : BasePluginConfig
+    {
+        [JsonPropertyName("MutePlayerResponse")]
+        public bool MutePlayerResponse { get; set; } = false;
+
+        [JsonPropertyName("MuteServerResponse")]
+        public bool MuteServerResponse { get; set; } = false;
+    }
+
     [MinimumApiVersion(28)]
-    public class CS2Rcon : BasePlugin
+    public class CS2Rcon : BasePlugin, IPluginConfig<CS2RconConfig>
     {
         public override string ModuleName => "CS2Rcon";
         public override string ModuleVersion => "1.2.0";
         public override string ModuleAuthor => "LordFetznschaedl";
         public override string ModuleDescription => "Allows for server commands to be executed from the client using !rcon";
+
+        public CS2RconConfig Config { get; set; }
+
+        public void OnConfigParsed(CS2RconConfig config)
+        {
+            Config = config;
+        }
 
         public override void Load(bool hotReload)
         {
@@ -32,7 +49,7 @@ namespace CS2Rcon
                 this.Log("Command has been called by the server.");
             }
             
-            if(command.ArgCount <= 0)
+            if (command.ArgCount <= 0)
             {
                 this.PrintToPlayerOrServer($"{player?.PlayerName??"Server"} [{player?.SteamID??0}] executing RCON without ARGS is not possible!");
                 return; 
@@ -61,7 +78,7 @@ namespace CS2Rcon
         {
             message = $"[{ChatColors.Red}{this.ModuleName}{ChatColors.White}] " + message;
 
-            if(player != null) 
+            if (player != null && !Config.MutePlayerResponse) 
             {
                 player.PrintToConsole(message);
                 player.PrintToChat(message);
@@ -74,6 +91,11 @@ namespace CS2Rcon
 
         private void Log(string message)
         {
+            if (Config.MuteServerResponse)
+            {
+                return;
+            }
+
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"[{this.ModuleName}] {message}");
             Console.ResetColor();
